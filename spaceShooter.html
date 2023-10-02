@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        
+        .container {
+            position: relative;
+            margin: 0 auto;
+        }
+        .indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            color: white;
+            display: flex;
+            width: 424px;
+            height: 60px;
+        }
+        
+        .ammo {
+            width: 100px;
+            height: 60px;
+            background-color: grey;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            border-radius: 10px;
+        }
+        
+        .healthBar {
+            width: 80%;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: start;
+            padding: 0 5px;
+        }
+        
+        .maxHealth {
+            width: 100%;
+            height: 40px;
+            z-index: 2;
+            background-color: #8f0000;
+        }
+        
+        .healthValue {
+            width: 100%;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 15px;
+            z-index: 3;
+            background-color: green;
+        }
+        
+        .score {
+            width: 100px;
+            height: 60px;
+            background-color: #e5a400;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            border-radius: 10px;
+        }
+        
+        .control {
+            display: flex;
+            position: absolute;
+            bottom: 20px;
+            width: 424px;
+            justify-content: space-around;
+        }
+        
+        .btn {
+            background-color: green;
+            border: 2px solid darkgreen;
+            width: 100px;
+            height: 50px;
+            transition: all 0.05s ease-in-out;
+        }
+        
+        .btn.l {
+            border-radius: 30px 0 0 30px;
+            transform: translateX(15px);
+        }
+        
+        .btn.r {
+            border-radius: 0 30px 30px 0;
+            transform: translateX(-15px);
+        }
+        
+        .btn:active {
+            transform: scale(150%, 150%);
+        }
+        .txt{
+            position: absolute;
+            top: 300px;
+            right: 80px;
+            color: white;
+            font-size: 50px;
+            font-weight: 1000;
+            display: none;
+        }
+    </style>
+    <title>Document</title>
+</head>
+
+<body>
+    <div class="container">
+        <div class="indicator">
+            <div class="ammo">Ammo:<br>1000</div>
+            <div class="healthBar">
+                <div class="maxHealth">
+                <div class="healthValue"></div>
+                </div>
+            </div>
+            <div class="score">Score:<br>9999999</div>
+        </div>
+        <div class="control">
+            <div class="l btn"></div>
+            <div class="r btn"></div>
+            <div class="s btn"></div>
+        </div>
+        <canvas id="canvas"></canvas>
+        <div class="txt">Game Over!</div>
+    </div>
+    <script>
+        alert('a(moveLeft)  d(moveRight)   space(shoot)');
+        const canvas = document.getElementById('canvas');
+    const c = canvas.getContext('2d');
+    const control = document.querySelector('.control');
+    
+    canvas.width = 424;
+    canvas.height = 780;
+    
+    class object{
+        constructor({position, velocity, scale, color}){
+            this.position = position;
+            this.velocity = velocity;
+            this.scale = scale;
+            this.color = color;
+        }
+        draw(){
+            c.fillStyle = this.color;
+            this.position.x += this.velocity.x;
+            this.position.y += this.velocity.y;
+            c.fillRect(this.position.x,this.position.y,this.scale.x,this.scale.y);
+        }
+        update(){
+            this.draw();
+        }
+    }
+    class obs{
+        constructor({position, velocity, scale, color, health}){
+            this.position = position;
+            this.velocity = velocity;
+            this.scale = scale;
+            this.color = color;
+            this.health = health;
+        }
+        draw(){
+            c.fillStyle = this.color;
+            this.position.x += this.velocity.x;
+            this.position.y += this.velocity.y;
+            c.fillRect(this.position.x,this.position.y,this.scale.x,this.scale.y);
+        }
+        update(){
+            this.draw();
+        }
+    }
+    
+    let player = new object({
+        position:{
+            x:212,
+            y:650
+        },
+        velocity:{
+            x:0,
+            y:0
+        },
+        scale:{
+            x:35,
+            y:35
+        },
+        color:'blue'
+        }
+    );
+    
+    let ammoBoxes = [];
+    let bullets = [];
+    let meteors = [];
+    let speed = 3;
+    let ammo = 30;
+    let score = 0;
+    let hp = 100;
+    let maxHp = 100;
+    let time = 0;
+    let meteorSpawnTick = 10000;
+    let damage = 3;
+    let spawnNMeteor = 1;
+    
+    function colide(a,b){
+        if(
+            a.position.x + a.scale.x >= b.position.x &&
+            a.position.x <= b.position.x + b.scale.x &&
+            a.position.y + a.scale.y >= b.position.y &&
+            a.position.y <= b.position.y + b.scale.y
+        ){
+            return true;
+        }else{
+            return false;
+        }
+    }
+    function play(){
+        window.requestAnimationFrame(play);
+        document.querySelector('.ammo').innerHTML = `Ammo:<br> ${ammo}`;
+        document.querySelector('.healthValue').innerHTML = `${hp}/${maxHp}`;
+        healthPercent = (hp/maxHp)*100;
+        document.querySelector('.healthValue').style.width = healthPercent + '%';
+        document.querySelector('.score').innerHTML = "Score:<br>" + score;
+        c.fillStyle = "black";
+        c.fillRect(0,0,canvas.width,canvas.height);
+        if(player.position.x + player.velocity.x <= 0 || player.position.x + player.velocity.x + player.scale.x >= canvas.width){
+            player.velocity.x = 0;
+        }
+        player.update();
+        bullets.forEach(function(bullet, index){
+            bullet.update();
+            if(bullet.position.y + bullet.velocity.y <= 0){
+                delete bullets[index];
+            }
+        });
+        meteors.forEach(function(meteor, index){
+            meteor.update();
+            if(meteor.position.y + meteor.velocity.y + meteor.scale.y >= player.position.y){
+                delete meteors[index];
+                hp -= Math.round((Math.random())*3+1);
+            }
+        });
+        bullets.forEach(function(bullet, bIndex){
+            meteors.forEach(function(meteor, mIndex){
+                if(colide(bullets[bIndex],meteors[mIndex])){
+                    delete bullets[bIndex];
+                    meteor.health.val -= damage;
+                    if(meteor.health.val <= 0){
+                        delete meteors[mIndex];
+                        score += meteor.health.max;
+                        if(Math.random() < 0.1){
+                            ammoBoxes.push(new object({
+                                position:{
+                                    x:meteor.position.x,
+                                    y:meteor.position.y
+                                },
+                                velocity:{
+                                    x:0,
+                                    y:2
+                                },
+                                scale:{
+                                    x:20,
+                                    y:10
+                                },
+                                color:'gray'
+                                })
+                            );
+                        }
+                    }
+                }
+            });
+        });
+        ammoBoxes.forEach(function(ammoBox, aIndex){
+            ammoBox.update();
+            if(colide(ammoBoxes[aIndex],player)){
+                delete ammoBoxes[aIndex];
+                score += 5;
+                ammo += Math.round((Math.random()*50)+20);
+            }
+            if(ammoBoxes.position.y >= canvas.height){
+                delete ammoBoxes[aIndex];
+            }
+        });
+        if(hp <= 0){
+            document.querySelector('.txt').style.display = 'flex';
+            alert('Game Over');
+            speed = 0;
+            window.location.reload();
+        }
+    }
+    play();
+    function timer(){
+        setTimeout(function(){
+            time++;
+            if(time % 20 == 0 && meteorSpawnTick > 5000){
+                meteorSpawnTick -= 100;
+            }
+            if(time % 30 == 0 ){
+                spawnNMeteor += 1;
+            }
+            if(time % 20 == 0){
+                ammoBoxes.push(new object({
+                    position:{
+                        x:Math.round((Math.random()*320)+70),
+                        y:10
+                    },
+                    velocity:{
+                        x:0,
+                        y:2
+                    },
+                    scale:{
+                        x:20,
+                        y:10
+                    },
+                    color:'gray'
+                    })
+                );
+            }
+            if(time % 20 == 0 && ammo == 0){
+                ammo += 50;
+            }
+            window.requestAnimationFrame(timer);
+        },1000);
+    }
+    timer();
+    function meteorSpawn(){
+        setTimeout(function(){
+            for(let i = 0;i < spawnNMeteor;i++){
+            let mHp = Math.round((Math.random()*10)+2);
+            meteors.push(new obs({
+            position:{
+                x:Math.round((Math.random()*320)+10),
+                y:30
+            },
+            velocity:{
+                x:0,
+                y:(Math.random()*2)+0.1
+            },
+            scale:{
+                x:Math.round((Math.random()*50)+20),
+                y:Math.round((Math.random()*59)+20)
+            },
+            color:'red',
+            health:{
+                val:mHp,
+                max:mHp
+            }
+            }));
+            }
+            window.requestAnimationFrame(meteorSpawn)
+        },meteorSpawnTick);
+    }
+    meteorSpawn();
+    meteors.push(new obs({
+            position:{
+                x:Math.round((Math.random()*320)+70),
+                y:30
+            },
+            velocity:{
+                x:0,
+                y:(Math.random()*4)+0.3
+            },
+            scale:{
+                x:Math.round((Math.random()*50)+20),
+                y:Math.round((Math.random()*50)+20)
+            },
+            color:'red',
+            health:{
+                val:10,
+                max:10
+            }
+    }));
+    control.addEventListener('touchmove',function(e){
+        let tcl = e.target.classList;
+        if(tcl.contains('l')){
+            player.velocity.x = -speed;
+        }
+        if(tcl.contains('r')){
+            player.velocity.x = speed;
+        }
+    });
+    control.addEventListener('touchstart',function(e){
+        let tcl = e.target.classList;
+        if(tcl.contains('l')){
+            player.velocity.x = -speed;
+        }
+        if(tcl.contains('r')){
+            player.velocity.x = speed;
+        }
+    });
+    control.addEventListener('touchend',function(e){
+        let tcl = e.target.classList;
+        if(tcl.contains('l')){
+            player.velocity.x = 0;
+        }
+        if(tcl.contains('r')){
+            player.velocity.x = 0;
+        }
+        if(tcl.contains('s') && ammo > 0){
+            ammo--;
+            bullets.push(new object({
+                    position:{
+                        x:player.position.x + (player.scale.x / 2),
+                        y:player.position.y - 5
+                    },
+                    velocity:{
+                        x:0,
+                        y:-5
+                    },
+                    scale:{
+                        x:5,
+                        y:5
+                    },
+                    color:'yellow'
+                    }
+                )
+            );
+        }
+    });
+    document.addEventListener('keydown',function(e){
+        if(e.key == 'a'){
+            player.velocity.x = -speed;
+        }
+        if(e.key == 'd'){
+            player.velocity.x = speed;
+        }
+        if(e.key == ' ' && ammo > 0){
+            ammo--;
+            bullets.push(new object({
+                    position:{
+                        x:player.position.x + (player.scale.x / 2),
+                        y:player.position.y - 5
+                    },
+                    velocity:{
+                        x:0,
+                        y:-5
+                    },
+                    scale:{
+                        x:5,
+                        y:5
+                    },
+                    color:'yellow'
+                    }
+                )
+            );
+        }
+    });
+    document.addEventListener('keyup',function(e){
+        if(e.key == 'a'){
+            player.velocity.x = 0;
+        }
+        if(e.key == 'd'){
+            player.velocity.x = 0;
+        }
+    })
+    </script>
+</body>
+
+</html>
